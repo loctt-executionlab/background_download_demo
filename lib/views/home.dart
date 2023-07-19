@@ -1,10 +1,12 @@
 import 'package:background_download_demo/models/video_model.dart';
+import 'package:background_download_demo/notifier/download_provider.dart';
 import 'package:background_download_demo/views/multiple_video_entry.dart';
 import 'package:background_download_demo/views/video_entry.dart';
-import 'package:background_downloader/background_downloader.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 
-class Home extends StatelessWidget {
+class Home extends ConsumerWidget {
   const Home({Key? key}) : super(key: key);
 
   final String id = 'video_id_1';
@@ -12,27 +14,50 @@ class Home extends StatelessWidget {
       'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4';
 
   @override
-  Widget build(BuildContext context) {
-    final FileDownloader downloader = FileDownloader();
-
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('background_downloader demo'),
         backgroundColor: Theme.of(context).primaryColorLight,
       ),
-      body: ListView(
-        children: [
-          ...videoList.map((e) => VideoEntry(video: e)).toList(),
-          const MultipleVideoEntry(multiVideo: multipleVideo),
-          VideoEntry(video: videoList[0]),
-          TextButton(
-              onPressed: () {
-                downloader.enqueue(
-                    DownloadTask(url: url, updates: Updates.statusAndProgress));
-              },
-              child: const Text('download')),
-          TextButton(onPressed: () {}, child: const Text('download')),
-        ],
+      body: SafeArea(
+        child: Column(
+          children: [
+            Expanded(
+              child: ListView(
+                children: [
+                  ...videoList.map((e) => VideoEntry(video: e)).toList(),
+                  const MultipleVideoEntry(multiVideo: multipleVideo),
+                ],
+              ),
+            ),
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () async {
+                    print(await getApplicationDocumentsDirectory());
+                  },
+                  child: const Text('Print path'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    print('list all task:');
+                    final downloader = ref.watch(backgroundDownloadProvider);
+                    final allTasks = await downloader.database.allRecords();
+                    if (allTasks.isEmpty) {
+                      print('db is empty');
+                    }
+                    for (var task in allTasks) {
+                      print(
+                          'file ${task.task.filename} ${task.taskId} with status ${task.status.name}');
+                    }
+                  },
+                  child: const Text('Print task in db'),
+                ),
+              ],
+            )
+          ],
+        ),
       ),
     );
   }

@@ -3,7 +3,6 @@ import 'package:background_download_demo/models/video_model.dart';
 import 'package:background_download_demo/notifier/download_provider.dart';
 import 'package:background_download_demo/services/background_downloader_service.dart';
 import 'package:background_downloader/background_downloader.dart';
-import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 part 'download_status_notifier.g.dart';
 
@@ -26,10 +25,11 @@ class DownloadStatusNotifier extends _$DownloadStatusNotifier {
 
   Future<bool> download() async {
     final task = DownloadTask(
-      url: video.url,
-      taskId: video.id,
-      updates: Updates.statusAndProgress,
-    );
+        url: video.url,
+        taskId: video.id,
+        updates: Updates.statusAndProgress,
+        filename: '${video.id}.mp4',
+        baseDirectory: BaseDirectory.applicationDocuments);
     final successfullyEnqueued = await downloader.enqueue(task);
     if (!successfullyEnqueued) return false;
     return true;
@@ -41,8 +41,20 @@ class DownloadStatusNotifier extends _$DownloadStatusNotifier {
     final result = await downloader.cancelTaskWithId(video.id);
     if (!result) return false;
     // reset state to not downloaded
-    state = state.copyWith(progress: 0, status: DownloadTaskStatus.notStarted);
+    // state = state.copyWith(progress: 0, status: DownloadTaskStatus.notStarted);
     return true;
+  }
+
+  Future<void> delete() async {
+    if (state.status != DownloadTaskStatus.completed) return;
+    print(state.id);
+    final task = await downloader.database.recordForId(state.id);
+    print(task);
+    if (task == null) return;
+    await Future.wait([
+      BackgroundDownloaderService.removeFileFromTask(task.task),
+      downloader.database.deleteRecordWithId(state.id),
+    ]);
   }
 
   Future<bool> pause() async {
@@ -76,7 +88,8 @@ class DownloadStatusNotifier extends _$DownloadStatusNotifier {
     state = DownloadTaskModel(
       id: video.id,
       url: record.task.url,
-      progress: record.progress.toInt(),
+      progress:
+          BackgroundDownloaderService.toPercentageProgress(record.progress),
       status: record.status.toStatus(),
     );
   }
@@ -84,14 +97,11 @@ class DownloadStatusNotifier extends _$DownloadStatusNotifier {
   _onProgressChanged(TaskUpdate update) {
     if (update.task.url != state.url) return;
     if (update is TaskStatusUpdate) {
-      debugPrint(
-          'Status update for ${update.task} with status ${update.status}');
       state = state.copyWith(status: update.status.toStatus());
     } else if (update is TaskProgressUpdate) {
-      debugPrint(
-          'Progress update for ${update.task} with progress ${update.progress} '
-          'and expected file size ${update.expectedFileSize}');
-      state = state.copyWith(progress: (update.progress * 100).toInt());
+      state = state.copyWith(
+          progress: BackgroundDownloaderService.toPercentageProgress(
+              update.progress));
       // note: expectedFileSize is only valid if 0 < progress < 1. It is -1 otherwise
     }
   }

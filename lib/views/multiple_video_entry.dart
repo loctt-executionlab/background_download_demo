@@ -15,42 +15,56 @@ class MultipleVideoEntry extends ConsumerWidget {
     final task = ref.watch(multiDownloadstatusNotifierProvider(multiVideo));
     // print('ui progress ${task.progress}');
 
-    return Column(
-      children: [
-        ...task.entries
-            .map(
-              (e) => Row(
-                children: [
-                  Text(e.value.id, overflow: TextOverflow.clip, maxLines: 3),
-                  const Spacer(),
-                  Text(e.value.progress.toString()),
-                ],
-              ),
-            )
-            .toList(),
-        Row(
-          children: [
-            IconButton(
-                onPressed: () {
-                  for (var video in multiVideo.videos) {
-                    ref
-                        .read(downloadStatusNotifierProvider(video).notifier)
-                        .download();
-                  }
-                },
-                icon: const Icon(Icons.download)),
-            IconButton(
-                onPressed: () {
-                  for (var video in multiVideo.videos) {
-                    ref
-                        .read(downloadStatusNotifierProvider(video).notifier)
-                        .cancel();
-                  }
-                },
-                icon: const Icon(Icons.remove)),
-          ],
-        )
-      ],
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Column(
+        children: [
+          ...task.entries
+              .map(
+                (e) => Column(
+                  children: [
+                    Row(
+                      children: [
+                        Text(e.key, overflow: TextOverflow.clip, maxLines: 3),
+                        const Spacer(),
+                        Text(e.value.progress.toString()),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                            '${e.value.progress.toString()} | ${e.value.status.name}'),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                ),
+              )
+              .toList(),
+          Row(
+            children: [
+              IconButton(
+                  onPressed: () {
+                    for (var video in multiVideo.videos) {
+                      ref
+                          .read(downloadStatusNotifierProvider(video).notifier)
+                          .download();
+                    }
+                  },
+                  icon: const Icon(Icons.download)),
+              IconButton(
+                  onPressed: () {
+                    for (var video in multiVideo.videos) {
+                      ref
+                          .read(downloadStatusNotifierProvider(video).notifier)
+                          .cancel();
+                    }
+                  },
+                  icon: const Icon(Icons.remove)),
+            ],
+          )
+        ],
+      ),
     );
   }
 }
